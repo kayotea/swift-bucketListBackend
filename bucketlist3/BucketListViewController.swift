@@ -21,18 +21,26 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
         super.viewDidLoad()
         print("Loaded")
         //fetchAllItems()
-        
+        getAllItems()
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+    }
+    
+    func getAllItems() {
         TaskModel.getAllTasks(completionHandler: {
-        data, response, error in
+            data, response, error in
             
             do {
                 if let d = data {
-                    if let results = try JSONSerialization.jsonObject(with: d, options: JSONSerialization.ReadingOptions.mutableContainers) as? NSArray {
+                    if let results = try JSONSerialization.jsonObject(with: d, options: JSONSerialization.ReadingOptions.mutableContainers) as? [NSDictionary] {
                         //print (results)
                         
-                        let tasksArray = results as! [NSDictionary]
-                        self.items = tasksArray
-                        self.tableView.reloadData()
+                        self.items = results
+                        DispatchQueue.main.async {
+                            self.tableView.reloadData()
+                        }
                     }
                 } else {
                     print("where is the data?")
@@ -42,10 +50,7 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
             }
         })
     }
-
-    override func didReceiveMemoryWarning() {
-        super.didReceiveMemoryWarning()
-    }
+    
     
     //num of rows
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
@@ -116,16 +121,16 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
                 print("SENDER:",indexPath)
                 let item = items[indexPath.row]
                 
-                //addItemTableViewController.item = item.text
+                addItemTableViewController.item = item["objective"] as? String
                 addItemTableViewController.indexPath = indexPath
             }
         }
         //if no sender
-        else {
-            let navigationController = segue.destination as! UINavigationController
-            let addItemTableViewController = navigationController.topViewController as! AddItemTableViewController
-            addItemTableViewController.delegate = self
-        }
+//        else {
+//            let navigationController = segue.destination as! UINavigationController
+//            let addItemTableViewController = navigationController.topViewController as! AddItemTableViewController
+//            addItemTableViewController.delegate = self
+//        }
         
         ////click on add item
         //if segue.identifier == "AddItemSegue" {
@@ -158,17 +163,39 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
         
         dismiss(animated: true, completion: nil)
     }
+    
     //function that lets BLVC be CBD //save
     func itemSaved(by controller: AddItemTableViewController, with text: String, at indexPath: NSIndexPath?) {
         
         if let ip = indexPath {
             //items[ip.row] = text
-            let item = items[ip.row]
-            //item.text = text
+            //var item = items[ip.row]
+            //item["objective"] = text
         }
         
         else {
             print("Received Text from Top View: \(text)")
+            TaskModel.addTaskWithObjective(objective: text, completionHandler: {
+                data, response, error in
+                
+                do {
+                    if let d = data {
+                        if let result = try JSONSerialization.jsonObject(with: d, options: JSONSerialization.ReadingOptions.mutableContainers) as? NSDictionary {
+                            //print (results)
+                            
+                            self.items.append(result)
+                            print ("RESULT: \(result)")
+                            DispatchQueue.main.async {
+                                self.tableView.reloadData()
+                            }
+                        }
+                    } else {
+                        print ("where is the data?")
+                    }
+                } catch {
+                    print ("Something went wrong")
+                }
+            })
             //items.append(text)
             //let item = NSEntityDescription.insertNewObject(forEntityName: "BucketListItem", into: managedObjectContext) as! BucketListItem
             //item.text = text
