@@ -14,13 +14,9 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
 
     var items = [NSDictionary]()
     
-    //can add change and delete items to core data here, then save it
-    //let managedObjectContext = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-    
     override func viewDidLoad() {
         super.viewDidLoad()
         print("Loaded")
-        //fetchAllItems()
         getAllItems()
     }
 
@@ -70,16 +66,26 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         
         let item = items[indexPath.row]
-        //managedObjectContext.delete(item)
         
-        //do {
-        //    try managedObjectContext.save()
-        //} catch {
-        //    print("\(error)")
-        //}
-        
-        items.remove(at: indexPath.row)
-        tableView.reloadData()
+        if let id = item["_id"] {
+            print (id)
+            
+            TaskModel.deleteTask(id: id as! String, completionHandler: {
+                data, response, error in
+            
+                do {
+                    
+//                    DispatchQueue.main.async {
+//                        self.items.remove(at: indexPath.row)
+//                        self.tableView.reloadData()
+//                    }
+                } catch {
+                    print ("Something went wrong")
+                }
+            })
+        }
+        self.items.remove(at: indexPath.row)
+        self.tableView.reloadData()
     }
     
     ////listen for user to select row
@@ -118,19 +124,13 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
                 addItemTableViewController.delegate = self
                 
                 let indexPath = sender as! NSIndexPath //sender used
-                print("SENDER:",indexPath)
+                //print("SENDER:",indexPath)
                 let item = items[indexPath.row]
                 
                 addItemTableViewController.item = item["objective"] as? String
                 addItemTableViewController.indexPath = indexPath
             }
         }
-        //if no sender
-//        else {
-//            let navigationController = segue.destination as! UINavigationController
-//            let addItemTableViewController = navigationController.topViewController as! AddItemTableViewController
-//            addItemTableViewController.delegate = self
-//        }
         
         ////click on add item
         //if segue.identifier == "AddItemSegue" {
@@ -159,7 +159,7 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
     }
     //function that lets BLVC be CBD //cancel
     func cancelButtonPressed(by controller: AddItemTableViewController) {
-        print("I'm the hidden controller, but I am responding to the CANCEL button press on the top view controller")
+        //print("I'm the hidden controller, but I am responding to the CANCEL button press on the top view controller")
         
         dismiss(animated: true, completion: nil)
     }
@@ -167,10 +167,53 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
     //function that lets BLVC be CBD //save
     func itemSaved(by controller: AddItemTableViewController, with text: String, at indexPath: NSIndexPath?) {
         
+        print("REACHED ITEMSAVED()")
+        
         if let ip = indexPath {
+            
+            print("INDEXPATH ROW: \(ip.row)")
+            
+            let item = items[ip.row]
+            if let id = item["_id"] {
+            
+                TaskModel.updateTask(id: id as! String, objective: text, completionHandler: {
+                    data, response, error in
+                
+                    do {
+                        if let d = data {
+                            if let result = try JSONSerialization.jsonObject(with: d, options: JSONSerialization.ReadingOptions.mutableContainers) as? NSDictionary {
+
+                                if let d = data {
+                                    print("DATA: \(d)")
+                                    print("ITEM ID: \(id)")
+                                    print("OBJECTIVE: \(text)")
+                                    
+                                    if let result = try JSONSerialization.jsonObject(with: d, options: JSONSerialization.ReadingOptions.mutableContainers) as? NSDictionary {
+                                        
+                                        print ("RESULT: \(result)")
+                            
+                                        let item = result
+                                        self.items[ip.row] = item
+                                        DispatchQueue.main.async {
+                                            self.tableView.reloadData()
+                                        }
+                                    }
+                                } else {
+                                    print ("where is the data?")
+                                }
+                            }
+                        }
+                    }catch {
+                        print ("Something went wrong")
+                    }
+                })
+                
+            }
+            
             //items[ip.row] = text
             //var item = items[ip.row]
             //item["objective"] = text
+            self.tableView.reloadData()
         }
         
         else {
@@ -196,33 +239,8 @@ class BucketListViewController: UITableViewController, AddItemTableViewControlle
                     print ("Something went wrong")
                 }
             })
-            //items.append(text)
-            //let item = NSEntityDescription.insertNewObject(forEntityName: "BucketListItem", into: managedObjectContext) as! BucketListItem
-            //item.text = text
-            //items.append(item)
         }
-        
-        //do {
-        //    try managedObjectContext.save()
-        //} catch {
-        //    print("\(error)")
-        //}
-        tableView.reloadData()
         dismiss(animated: true, completion: nil)
-    }
-    
-    //call to database to call items
-    func fetchAllItems() {
-        
-        let request = NSFetchRequest<NSFetchRequestResult>(entityName: "BucketListItem")
-        
-        //do {
-            //this method throws, so need to do/try/catch
-            //let result = try managedObjectContext.fetch(request)
-            //items = result as! [BucketListItem]
-        //} catch {
-            //print("\(error)")
-        //}
     }
 }
 
